@@ -14,7 +14,10 @@
 // there is nothing present to break a tie with.
 
 function isNonNegInt(n) {
-  return typeof n === 'number' && Number.isInteger(n) && n >= 0;
+  // Number.isSafeInteger (not just isInteger) so a weight beyond 2^53 — where JS doubles
+  // stop being exact — is refused rather than silently rounded. This is what makes the
+  // "integer-exact, no drift" claim true: out of the exact range we refuse, never guess.
+  return typeof n === 'number' && Number.isSafeInteger(n) && n >= 0;
 }
 
 function isValidChoice(c) {
@@ -52,6 +55,11 @@ export function quorumFloor(votes, thresholdPercent) {
   if (!tallied.ok) return tallied;
   const { yes, no, total } = tallied.value;
   const decisive = yes + no;
+  // The cross-multiplied comparison is exact only while its terms stay within the safe-integer
+  // range. If the summed total or either product would exceed it, refuse rather than drift.
+  if (!Number.isSafeInteger(total) || !Number.isSafeInteger(decisive * 100) || !Number.isSafeInteger(thresholdPercent * total)) {
+    return { ok: false, why: 'weights too large for an exact integer comparison' };
+  }
   if (total === 0) {
     return { ok: true, value: { clears: false, margin: -thresholdPercent } };
   }

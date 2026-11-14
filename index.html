@@ -87,7 +87,7 @@ footer{padding:40px 16px 60px;color:var(--muted);font-size:13.5px;text-align:cen
   <h1>QuorumFloor</h1>
   <p class="lede">A vote only binds if enough people actually turned out to decide it. QuorumFloor settles that floor — decisive votes as an <em>exact</em> percentage of everyone present — in whole-number arithmetic, so there is no rounding that can pass a failed vote or fail a passed one. In your browser, nothing uploaded.</p>
   <div class="badges">
-    <span class="badge ok">witness mutation gate · 19/19 killed</span>
+    <span class="badge ok">witness mutation gate · 21/21 killed</span>
     <span class="badge ok">unit tests on every push</span>
     <span class="badge">integer-exact · no floats · no drift</span>
     <span class="badge">pure kernel · never throws · runs offline</span>
@@ -249,7 +249,7 @@ const r = quorumFloor(
     <text x="24" y="222" class="t">nothing is there to clear — it never passes.</text>
   </svg>
   </div>
-  <p class="muted" style="font-size:14px">Every edge of that comparison is what the mutation gate attacks: it rewrites <code>&gt;=</code> to <code>&gt;</code> (which would fail the exact boundary), drops the zero-present guard, swaps <code>decisive</code> for <code>present</code> — and each of the <b>19</b> rewrites is caught by a test. "19/19 killed" means there is no mutant of this logic the tests fail to notice.</p>
+  <p class="muted" style="font-size:14px">Every edge of that comparison is what the mutation gate attacks: it rewrites <code>&gt;=</code> to <code>&gt;</code> (which would fail the exact boundary), drops the zero-present guard, swaps <code>decisive</code> for <code>present</code> — and each of the <b>21</b> rewrites is caught by a test. "21/21 killed" means no mutant among the 21 the tool tried survives the tests — a hard bar on the tests, not a proof the logic is complete.</p>
 </section>
 
 <section id="blueprint">
@@ -258,8 +258,8 @@ const r = quorumFloor(
     <tr><th>Organ</th><th>File</th><th>What it does</th></tr>
     <tr><td><b>The kernel</b></td><td><code>kernel.mjs</code></td><td>Two pure functions: <code>tally(votes)</code> sums yes/no/abstain weights; <code>quorumFloor(votes, thresholdPercent)</code> returns <code>{clears, margin}</code>. No I/O, no clock, no randomness, no floats. Malformed input returns <code>{ok:false, why}</code> instead of throwing.</td></tr>
     <tr><td><b>The contract</b></td><td><code>kernel.test.mjs</code></td><td>Tests pinning the behaviour: the exact boundary clears, the empty ballot never clears, abstentions are present-not-decisive, bad weights and out-of-range floors are refused.</td></tr>
-    <tr><td><b>The gate</b></td><td><code>witness.mjs</code></td><td>Mutates the kernel 19 ways and demands every mutant die under the tests. A survivor means the tests have a blind spot. Re-run on every push.</td></tr>
-    <tr><td><b>The proof</b></td><td><code>.github/workflows/gate.yml</code></td><td>CI re-runs tests + gate on GitHub's own runner. Green there is the un-forgeable proof the code does what this page claims.</td></tr>
+    <tr><td><b>The gate</b></td><td><code>witness.mjs</code></td><td>Mutates the kernel 21 ways and demands every mutant die under the tests. A survivor means the tests have a blind spot. Re-run on every push.</td></tr>
+    <tr><td><b>The proof</b></td><td><code>.github/workflows/gate.yml</code></td><td>CI re-runs tests + gate on GitHub's own runner. Green there proves the gated code is the code shipped and that the tests kill the 21 mutations tried — not that every claim on this page holds.</td></tr>
     <tr><td><b>This page</b></td><td><code>index.html</code></td><td>Inlines the kernel byte-for-byte, so the logic you can audit in CI is the logic running under your clicks. A parity test fails CI if the two ever drift.</td></tr>
   </table>
   <p class="note">Why integers, not percentages? Because <code>decisive / present × 100 ≥ floor</code> compares two floating-point numbers, and floating-point cannot represent most fractions exactly. The cross-multiplied form <code>decisive × 100 ≥ floor × present</code> uses only whole-number multiplication, which is exact for every input that fits — the boundary cannot wobble.</p>
@@ -270,8 +270,8 @@ const r = quorumFloor(
   <p>A turnout rule you compute by hand is a rule you can be forced to re-compute in front of a challenger. QuorumFloor turns "the ballot met quorum" from a figure on a calculator into an exact, reproducible verdict with a re-runnable proof. Here is what that means for each role.</p>
   <div class="grid two">
     <div class="card"><h3>For the Company Secretary / Governance</h3><p>Resolution quorums, AGM turnout floors and trustee-board thresholds become <b>exact</b> and reproducible. The margin is explicit, so a contested "did it carry?" is settled by whole-number arithmetic anyone can re-run — not by whose spreadsheet rounded which way.</p></div>
-    <div class="card"><h3>For the Returning Officer / Ballot runner</h3><p>Statutory turnout floors (a strike ballot's 50%, a referendum threshold) are judged on the exact line. The kernel <b>never throws</b>, so a malformed entry returns a clean refusal rather than crashing a results run, and the empty and all-abstain cases are handled on purpose.</p></div>
-    <div class="card"><h3>For the CTO / Eng lead</h3><p>Drop it into a voting service, a DAO contract's off-chain pre-check, a governance tool or an agent's tool-belt. Zero dependencies, no network, no secrets. Integer-only means <b>bit-identical results</b> across every machine and language you port it to.</p></div>
+    <div class="card"><h3>For the Returning Officer / Ballot runner</h3><p>Statutory turnout floors (a strike ballot's 50%, a referendum threshold) are judged on the exact line — <b>feed the whole eligible roll as "present," with non-voters as abstain</b>, and decisive/present <em>is</em> turnout-of-electorate. The kernel <b>never throws</b> on ordinary data, so a malformed entry returns a clean refusal rather than crashing a results run, and the empty and all-abstain cases are handled on purpose.</p></div>
+    <div class="card"><h3>For the CTO / Eng lead</h3><p>Drop it into a voting service, a DAO contract's off-chain pre-check, a governance tool or an agent's tool-belt. Zero dependencies, no network, no secrets. It is <b>deterministic</b>, and exact-or-refuse: weights beyond JS's safe-integer range are rejected, not silently rounded (a port to a fixed-width-integer language must keep that guard to stay exact).</p></div>
     <div class="card"><h3>For the Risk / Audit lead</h3><p>The quorum decision is a 60-line pure function with a mutation gate, re-run in public CI — the artefact an auditor can inspect in a sitting. "Passing tests" is cheap; "no mutant survives the tests" is the harder, honest bar you can show a regulator.</p></div>
   </div>
 
@@ -280,7 +280,7 @@ const r = quorumFloor(
     <tr><th>Question</th><th>Answer</th></tr>
     <tr><td>Where does our ballot data go?</td><td>Nowhere. The kernel runs in the page. There is no network call in the whole file — read it to confirm, or run it fully offline.</td></tr>
     <tr><td>Can we self-host?</td><td>It is one static HTML file and one <code>.mjs</code>. Host it on your own intranet, or <code>import</code> the kernel into your own service. No licence server, no phone-home.</td></tr>
-    <tr><td>How do we know it's correct?</td><td>Unit tests plus a 19/19 mutation gate, both re-run in public CI. The exact-boundary and empty-ballot cases are pinned by test, not left to chance.</td></tr>
+    <tr><td>How do we know it's correct?</td><td>Unit tests plus a 21/21 mutation gate, both re-run in public CI. The exact-boundary and empty-ballot cases are pinned by test, not left to chance.</td></tr>
     <tr><td>What's the licence?</td><td>MIT. Use it, fork it, embed it in a product. Authored by Kar for AI Native Solutions; licence holder Simon Gant.</td></tr>
     <tr><td>What are the limits?</td><td>See <a href="#risks">Risks, answered</a> below — QuorumFloor judges turnout against a floor honestly; it does not decide the <em>outcome</em> (majority), verify a voter's identity, or check they were eligible. It is the referee for the floor, and composes with a tally and a signer.</td></tr>
   </table>
@@ -309,22 +309,22 @@ const r = quorumFloor(
   <div class="grid three">
     <div class="card"><h3>1 · Try (today)</h3><p>Open this page, run a real past vote through <a href="#try">Try it</a>, and check the verdict matches your record. No sign-up, nothing installed.</p></div>
     <div class="card"><h3>2 · Embed (an afternoon)</h3><p><code>import { quorumFloor }</code> into the one place your vote is certified — a results service, a governance tool, a DAO pre-check, an agent tool. Feed it your existing vote counts.</p></div>
-    <div class="card"><h3>3 · Prove (ongoing)</h3><p>Keep the witness gate in your own CI. Every time the kernel changes, 19/19 must still kill. Pair it with your outcome tally and your eligibility/identity layer so each vote is from a verified, entitled voter.</p></div>
+    <div class="card"><h3>3 · Prove (ongoing)</h3><p>Keep the witness gate in your own CI. Every time the kernel changes, 21/21 must still kill. Pair it with your outcome tally and your eligibility/identity layer so each vote is from a verified, entitled voter.</p></div>
   </div>
 </section>
 
 <section id="whitepaper">
   <h2>White paper — the short version</h2>
   <p><b>The problem.</b> A turnout or quorum floor is a percentage threshold, and percentage thresholds are computed with division. Division forces a choice of representation, and the usual choice — floating-point — cannot represent most fractions exactly. On a vote that lands on or near its floor, the rounding direction decides the result, and on a contested vote that rounding is exactly what gets litigated.</p>
-  <p><b>The claim.</b> The floor check should be a pure, deterministic, <em>integer-only</em> function with no I/O, so it can run anywhere, be re-run identically by anyone, and be proven. QuorumFloor sums the yes/no/abstain weights, takes <code>yes + no</code> as decisive and the whole as present, and settles the floor with one cross-multiplied comparison, <code>decisive × 100 ≥ floor × present</code>. No division, no float, no drift. Equality clears; a zero ballot never clears. The result is total, honest, and bit-identical on every machine.</p>
-  <p><b>Why a mutation gate, not just tests.</b> Passing tests prove the code works on the cases you thought of. A mutation gate proves the <em>tests</em> work: it rewrites the kernel 19 ways — <code>&gt;=</code>→<code>&gt;</code>, the zero-present guard removed, decisive and present swapped — and demands the tests catch every one. 19/19 killed means the suite has no blind spot a bug could hide in. This is the estate's one defensible idea: trust comes from a gate that survives attack, not from a green checkmark.</p>
+  <p><b>The claim.</b> The floor check should be a pure, deterministic, <em>integer-only</em> function with no I/O, so it can run anywhere, be re-run identically by anyone, and be proven. QuorumFloor sums the yes/no/abstain weights, takes <code>yes + no</code> as decisive and the whole as present, and settles the floor with one cross-multiplied comparison, <code>decisive × 100 ≥ floor × present</code>. No division, no float, no drift within the exact range — and beyond it (weights past 2^53, or products that would overflow) it <em>refuses</em> rather than drifting. Equality clears; a zero ballot never clears. The result is total, honest, and deterministic.</p>
+  <p><b>Why a mutation gate, not just tests.</b> Passing tests prove the code works on the cases you thought of. A mutation gate proves the <em>tests</em> work: it rewrites the kernel 21 ways — <code>&gt;=</code>→<code>&gt;</code>, the zero-present guard removed, decisive and present swapped, the safe-integer guard loosened — and demands the tests catch every one. 21/21 killed means the suite catches those 21 rewrites — a hard bar, not a proof of completeness. This is the estate's one defensible idea: trust comes from a gate that survives attack, not from a green checkmark.</p>
   <p><b>What it is not.</b> QuorumFloor judges the <em>floor</em> — whether decisive participation reached the required share of those present. It does <em>not</em> decide the outcome: it does not tell you whether yes beat no (that is a separate majority tally, and its sibling <a href="https://sjgant80-hub.github.io/kar-quorumgate/">QuorumGate</a> weighs a winning choice against a threshold). It does not verify that a voter is who they claim (a signer's job) or that they were eligible to vote (policy). It is designed to compose with those — the referee for the floor, not the whole election.</p>
   <div id="risks" class="card">
     <h3 style="margin-top:0">Risks, answered</h3>
     <div class="kv"><span>"Abstentions shouldn't count toward the floor."</span><b>They count as present, not decisive — the usual rule; set your weights to your own convention.</b></div>
     <div class="kv"><span>"Someone sets the floor too low."</span><b>Policy, and visible — the floor is in the record and the margin is explicit.</b></div>
     <div class="kv"><span>"Weights could be gamed."</span><b>Weights are your input; gate who can set them upstream, and sign the roster.</b></div>
-    <div class="kv" style="border-bottom:none"><span>"The code could change silently."</span><b>CI re-runs the gate and the page-parity test; a drifting kernel fails 19/19 or breaks parity.</b></div>
+    <div class="kv" style="border-bottom:none"><span>"The code could change silently."</span><b>CI re-runs the gate and the page-parity test; a drifting kernel fails 21/21 or breaks parity.</b></div>
   </div>
 </section>
 
@@ -351,11 +351,14 @@ const r = quorumFloor(
 })();
 
 // ============================================================
-//  THE KERNEL — byte-identical to kernel.mjs (gated 19/19).
+//  THE KERNEL — byte-identical to kernel.mjs (gated 21/21).
 //  Do not edit here without re-running the witness on kernel.mjs.
 // ============================================================
 function isNonNegInt(n) {
-  return typeof n === 'number' && Number.isInteger(n) && n >= 0;
+  // Number.isSafeInteger (not just isInteger) so a weight beyond 2^53 — where JS doubles
+  // stop being exact — is refused rather than silently rounded. This is what makes the
+  // "integer-exact, no drift" claim true: out of the exact range we refuse, never guess.
+  return typeof n === 'number' && Number.isSafeInteger(n) && n >= 0;
 }
 
 function isValidChoice(c) {
@@ -393,6 +396,11 @@ function quorumFloor(votes, thresholdPercent) {
   if (!tallied.ok) return tallied;
   const { yes, no, total } = tallied.value;
   const decisive = yes + no;
+  // The cross-multiplied comparison is exact only while its terms stay within the safe-integer
+  // range. If the summed total or either product would exceed it, refuse rather than drift.
+  if (!Number.isSafeInteger(total) || !Number.isSafeInteger(decisive * 100) || !Number.isSafeInteger(thresholdPercent * total)) {
+    return { ok: false, why: 'weights too large for an exact integer comparison' };
+  }
   if (total === 0) {
     return { ok: true, value: { clears: false, margin: -thresholdPercent } };
   }
