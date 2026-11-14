@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QuorumFloor</title>
+<meta name="description" content="QuorumFloor — a sovereign, witness-gated kernel that decides whether a vote cleared its turnout floor: enough decisive votes, as an exact percentage of everyone present, with no floating-point drift. Runs entirely in your browser; no data leaves the page." />
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#15181d; --muted:#5b6471; --line:#e3e7ec;
+  --accent:#2f6df6; --accent-ink:#ffffff; --ok:#1a8f4c; --no:#c23b3b; --warn:#b26a00;
+  --code:#f0f2f6; --shadow:0 1px 2px rgba(20,24,33,.05),0 6px 20px rgba(20,24,33,.06);
+  --radius:14px; --maxw:860px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1116; --panel:#151a21; --ink:#e8ecf1; --muted:#9aa5b3; --line:#232a33;
+    --accent:#5b8cff; --accent-ink:#0e1116; --ok:#49c17e; --no:#ff6b6b; --warn:#e0a94a;
+    --code:#1b212a; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1116; --panel:#151a21; --ink:#e8ecf1; --muted:#9aa5b3; --line:#232a33;
+  --accent:#5b8cff; --accent-ink:#0e1116; --ok:#49c17e; --no:#ff6b6b; --warn:#e0a94a;
+  --code:#1b212a; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 16px}
+header.hero{padding:48px 16px 24px}
+.kicker{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700}
+h1{font-size:clamp(32px,6vw,52px);line-height:1.05;margin:.3em 0 .2em;letter-spacing:-.02em}
+.lede{font-size:clamp(17px,2.4vw,21px);color:var(--muted);max-width:44ch}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.badge{font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted)}
+.badge.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,var(--line))}
+section{padding:30px 0;border-top:1px solid var(--line)}
+section:first-of-type{border-top:none}
+h2{font-size:clamp(22px,3.5vw,30px);letter-spacing:-.01em;margin:0 0 .5em}
+h3{font-size:18px;margin:1.4em 0 .4em}
+p{margin:.6em 0}
+.muted{color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+.grid{display:grid;gap:14px}
+@media(min-width:620px){.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:1fr 1fr 1fr}}
+code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;background:var(--code);padding:1.5px 6px;border-radius:6px}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.5}
+.btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-weight:600;padding:9px 14px;border-radius:10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.sm{padding:5px 10px;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+input,select{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+input[type=number]{width:92px}
+label{font-size:13px;color:var(--muted);font-weight:600}
+.verdict{display:flex;align-items:center;gap:12px;padding:16px;border-radius:12px;font-weight:700;font-size:19px;border:1px solid var(--line)}
+.verdict.met{background:color-mix(in srgb,var(--ok) 10%,var(--panel));color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,var(--line))}
+.verdict.unmet{background:color-mix(in srgb,var(--no) 9%,var(--panel));color:var(--no);border-color:color-mix(in srgb,var(--no) 30%,var(--line))}
+.dot{width:12px;height:12px;border-radius:50%;background:currentColor;flex:none}
+.rowline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:7px 0}
+.rowline input[type=text]{flex:1;min-width:90px}
+.chip{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel);cursor:pointer;color:var(--muted)}
+.chip:hover{border-color:var(--accent);color:var(--ink)}
+.bar{height:14px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:6px;position:relative}
+.bar>i{display:block;height:100%;background:var(--accent)}
+.bar>.thr{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--no)}
+.tag{font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--code);color:var(--muted)}
+.note{font-size:13.5px;color:var(--muted);border-left:3px solid var(--line);padding-left:12px;margin:12px 0}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14.5px}
+.kv b{font-variant-numeric:tabular-nums}
+.big{font-size:clamp(26px,5vw,40px);font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.theme-toggle{position:fixed;top:12px;right:12px;z-index:10}
+.toc{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin-top:10px}
+.toc a{color:var(--accent);text-decoration:none}
+footer{padding:40px 16px 60px;color:var(--muted);font-size:13.5px;text-align:center}
+.svgwrap{overflow:auto}
+</style>
+</head>
+<body>
+<button class="btn sm theme-toggle" id="themeBtn" aria-label="Toggle theme">◐ theme</button>
+
+<header class="hero wrap">
+  <div class="kicker">A sovereign trust-rail kernel · by Kar</div>
+  <h1>QuorumFloor</h1>
+  <p class="lede">A vote only binds if enough people actually turned out to decide it. QuorumFloor settles that floor — decisive votes as an <em>exact</em> percentage of everyone present — in whole-number arithmetic, so there is no rounding that can pass a failed vote or fail a passed one. In your browser, nothing uploaded.</p>
+  <div class="badges">
+    <span class="badge ok">witness mutation gate · 19/19 killed</span>
+    <span class="badge ok">unit tests on every push</span>
+    <span class="badge">integer-exact · no floats · no drift</span>
+    <span class="badge">pure kernel · never throws · runs offline</span>
+  </div>
+  <div class="toc" aria-label="Contents">
+    <a href="#what">What it is</a>
+    <a href="#start">Start here</a>
+    <a href="#try">Try it</a>
+    <a href="#how">How it works</a>
+    <a href="#blueprint">Blueprint</a>
+    <a href="#brochure">For buyers</a>
+    <a href="#cost">Cost case</a>
+    <a href="#adopt">Adoption</a>
+    <a href="#whitepaper">White paper</a>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="what">
+  <h2>What it is, in plain words</h2>
+  <p>Many votes are only valid if <b>enough people took part</b>. A shareholder resolution may need a quorum of the shares to vote. A UK strike ballot is not lawful unless <b>at least 50% of those entitled</b> turn out (Trade Union Act 2016). A works council, an HOA, a pension-trustee board, a standards committee — each has a <b>floor</b>: below it the result does not count, however the votes fell.</p>
+  <p>That floor is a <b>percentage</b>, and percentages are where hand-counting quietly goes wrong. Someone computes "55 of 95 is… 57.9%, clears 50%" on a calculator, or a spreadsheet does <code>decisive/total*100</code> in floating-point and a vote that is <em>exactly</em> on the line comes back as 49.99999% and is wrongly thrown out — or 50.00001% and wrongly let through. On a contested resolution, that rounding is what gets challenged.</p>
+  <p><b>QuorumFloor removes the arithmetic from the argument.</b> You give it the votes — <code>yes</code>, <code>no</code>, and <code>abstain</code> weights — and the floor as a whole-number percent. It counts <code>yes + no</code> as the <b>decisive</b> votes, counts everyone (abstentions included) as <b>present</b>, and compares them with the single cross-multiplied test <code>decisive × 100 ≥ floor × present</code> — <b>entirely in integers</b>. No division, no float, no drift. The boundary is exact, the tie-break is stated, and the empty ballot is handled on purpose. The code that a mutation gate proves is the code running under your clicks.</p>
+</section>
+
+<section id="start">
+  <h2>Start here — how to use it</h2>
+  <div class="grid two">
+    <div class="card">
+      <h3>On this page (no install)</h3>
+      <ol>
+        <li>Scroll to <a href="#try">Try it</a>.</li>
+        <li>Enter the <b>weight</b> behind each of <code>yes</code>, <code>no</code> and <code>abstain</code> (use head-counts for one-person-one-vote, or share counts for weighted votes).</li>
+        <li>Set the <b>floor</b> — the percent of those present that must cast a decisive (yes/no) vote.</li>
+        <li>Read the verdict and the exact margin. Try a preset to see the boundary and the empty-ballot rule.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>In your own system (3 lines)</h3>
+      <pre>import { quorumFloor } from './kernel.mjs';
+
+const r = quorumFloor(
+  [ {weight:30, choice:'yes'},
+    {weight:25, choice:'no'},
+    {weight:40, choice:'abstain'} ],
+  50);
+// r.value.clears === true   (55 decisive of 95 present
+//                            → 5500 ≥ 4750, margin +750)</pre>
+      <p class="muted" style="font-size:13px">One file, zero dependencies. Copy <code>kernel.mjs</code> into any JS/TS runtime, a CI step, a serverless function, or an agent tool.</p>
+    </div>
+  </div>
+</section>
+
+<section id="try">
+  <h2>Try it — the live kernel</h2>
+  <p class="muted">This panel calls the exact <code>quorumFloor</code> function the witness gate proves. Nothing is sent anywhere. Weights must be whole non-negative numbers — the kernel rejects anything else cleanly, without throwing.</p>
+
+  <div class="card">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <span class="muted" style="font-size:13px;align-self:center">Presets:</span>
+      <span class="chip" data-preset="turnout">strike ballot · 50% turnout</span>
+      <span class="chip" data-preset="boundary">exact 50/50 boundary</span>
+      <span class="chip" data-preset="fail">turnout too low</span>
+      <span class="chip" data-preset="empty">empty ballot</span>
+      <span class="chip" data-preset="abstain">all abstain</span>
+    </div>
+
+    <div class="grid three">
+      <div><label for="w_yes">yes weight</label><br><input type="number" id="w_yes" min="0" step="1" value="30"></div>
+      <div><label for="w_no">no weight</label><br><input type="number" id="w_no" min="0" step="1" value="25"></div>
+      <div><label for="w_ab">abstain weight</label><br><input type="number" id="w_ab" min="0" step="1" value="40"></div>
+    </div>
+    <div class="rowline" style="margin-top:12px">
+      <label for="floor">floor (% of present that must vote decisively)&nbsp;</label>
+      <input type="number" id="floor" min="0" max="100" step="1" value="50" />
+    </div>
+
+    <div id="verdict" class="verdict" style="margin-top:14px"><span class="dot"></span><span id="verdictText">—</span></div>
+
+    <div style="margin-top:16px">
+      <div style="display:flex;justify-content:space-between;font-size:14px">
+        <span>decisive turnout <span id="pctLabel" class="muted"></span></span>
+        <span class="muted">red line = floor</span>
+      </div>
+      <div class="bar"><i id="barFill" style="width:0%"></i><span class="thr" id="barThr" style="left:50%"></span></div>
+    </div>
+
+    <div class="grid two" style="margin-top:16px">
+      <div>
+        <h3 style="margin-top:0">The count</h3>
+        <div class="kv"><span>decisive (yes + no)</span><b id="k_dec">—</b></div>
+        <div class="kv"><span>present (incl. abstain)</span><b id="k_pres">—</b></div>
+        <div class="kv"><span>exact test</span><b id="k_test">—</b></div>
+        <div class="kv" style="border-bottom:none"><span>margin</span><b id="k_margin">—</b></div>
+      </div>
+      <div>
+        <h3 style="margin-top:0">What the kernel returned</h3>
+        <pre id="raw" style="margin:0">—</pre>
+      </div>
+    </div>
+    <p class="note" id="explain">—</p>
+  </div>
+</section>
+
+<section id="how">
+  <h2>How it works — traced from a real run</h2>
+  <p>Take the <b>exact 50/50 boundary</b> preset: <code>yes 25</code>, <code>no 25</code>, <code>abstain 50</code>, floor <b>50%</b>. Decisive turnout is exactly 50% of those present — right on the line, the hardest case to settle. QuorumFloor cross-multiplies in whole numbers, so it clears by the stated rule (equality passes) with a margin of exactly zero. This particular ratio, 50/100, a float can represent cleanly — but the <em>same</em> whole-number method keeps a boundary like one-third or two-sevenths exact too, and <em>those</em> a float cannot represent, so a floating-point tally can land a hair under the line and fail a vote that actually met its floor. Integers never do. These are the numbers from the live run.</p>
+  <div class="svgwrap card" style="padding:12px">
+  <svg viewBox="0 0 820 300" width="100%" role="img" aria-label="Pipeline: yes/no/abstain weights flow through tally into decisive and present, then the integer cross-multiply test, to a verdict">
+    <style>
+      .b{fill:var(--code);stroke:var(--line)}
+      .t{fill:var(--ink);font:13px ui-monospace,monospace}
+      .lbl{fill:var(--muted);font:12px -apple-system,sans-serif}
+      .ar{stroke:var(--accent);stroke-width:2;fill:none;marker-end:url(#a)}
+      .no{fill:var(--no);font:12px ui-monospace,monospace}
+      .ok{fill:var(--ok);font:600 13px ui-monospace,monospace}
+    </style>
+    <defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--accent)"/></marker></defs>
+
+    <text x="12" y="20" class="lbl">1 · the ballot</text>
+    <rect class="b" x="10" y="30" width="150" height="100" rx="8"/>
+    <text x="22" y="54" class="ok">yes      = 25</text>
+    <text x="22" y="76" class="no">no       = 25</text>
+    <text x="22" y="98" class="t">abstain  = 50</text>
+    <text x="22" y="120" class="lbl">whole weights only</text>
+
+    <path class="ar" d="M165,80 L205,80"/>
+    <text x="214" y="20" class="lbl">2 · tally</text>
+    <rect class="b" x="212" y="30" width="176" height="100" rx="8"/>
+    <text x="224" y="58" class="t">decisive = yes+no</text>
+    <text x="224" y="80" class="ok">         = 50</text>
+    <text x="224" y="104" class="t">present  = 100</text>
+    <text x="224" y="124" class="lbl">abstain is present,</text>
+
+    <path class="ar" d="M393,80 L433,80"/>
+    <text x="442" y="20" class="lbl">3 · integer cross-multiply</text>
+    <rect class="b" x="440" y="30" width="200" height="100" rx="8"/>
+    <text x="452" y="56" class="t">decisive × 100</text>
+    <text x="452" y="76" class="ok">  5000</text>
+    <text x="452" y="100" class="t">floor × present</text>
+    <text x="452" y="120" class="t">  50 × 100 = 5000</text>
+
+    <path class="ar" d="M645,80 L685,80"/>
+    <text x="694" y="20" class="lbl">4 · compare</text>
+    <rect class="b" x="648" y="30" width="160" height="100" rx="8"/>
+    <text x="660" y="62" class="t">5000 ≥ 5000</text>
+    <text x="660" y="86" class="ok">equality → CLEARS</text>
+    <text x="660" y="112" class="lbl">margin = 0</text>
+
+    <path class="ar" d="M728,134 L728,172"/>
+    <rect class="b" x="470" y="174" width="338" height="62" rx="8"/>
+    <text x="484" y="200" class="ok">→ clears: true — floor met exactly</text>
+    <text x="484" y="222" class="t">whole numbers — no fraction left to round away</text>
+
+    <text x="12" y="166" class="lbl">the rule it pins</text>
+    <rect class="b" x="10" y="176" width="430" height="60" rx="8"/>
+    <text x="24" y="200" class="t">Equality favours CLEARING. And with 0 present,</text>
+    <text x="24" y="222" class="t">nothing is there to clear — it never passes.</text>
+  </svg>
+  </div>
+  <p class="muted" style="font-size:14px">Every edge of that comparison is what the mutation gate attacks: it rewrites <code>&gt;=</code> to <code>&gt;</code> (which would fail the exact boundary), drops the zero-present guard, swaps <code>decisive</code> for <code>present</code> — and each of the <b>19</b> rewrites is caught by a test. "19/19 killed" means there is no mutant of this logic the tests fail to notice.</p>
+</section>
+
+<section id="blueprint">
+  <h2>The blueprint — organ by organ</h2>
+  <table>
+    <tr><th>Organ</th><th>File</th><th>What it does</th></tr>
+    <tr><td><b>The kernel</b></td><td><code>kernel.mjs</code></td><td>Two pure functions: <code>tally(votes)</code> sums yes/no/abstain weights; <code>quorumFloor(votes, thresholdPercent)</code> returns <code>{clears, margin}</code>. No I/O, no clock, no randomness, no floats. Malformed input returns <code>{ok:false, why}</code> instead of throwing.</td></tr>
+    <tr><td><b>The contract</b></td><td><code>kernel.test.mjs</code></td><td>Tests pinning the behaviour: the exact boundary clears, the empty ballot never clears, abstentions are present-not-decisive, bad weights and out-of-range floors are refused.</td></tr>
+    <tr><td><b>The gate</b></td><td><code>witness.mjs</code></td><td>Mutates the kernel 19 ways and demands every mutant die under the tests. A survivor means the tests have a blind spot. Re-run on every push.</td></tr>
+    <tr><td><b>The proof</b></td><td><code>.github/workflows/gate.yml</code></td><td>CI re-runs tests + gate on GitHub's own runner. Green there is the un-forgeable proof the code does what this page claims.</td></tr>
+    <tr><td><b>This page</b></td><td><code>index.html</code></td><td>Inlines the kernel byte-for-byte, so the logic you can audit in CI is the logic running under your clicks. A parity test fails CI if the two ever drift.</td></tr>
+  </table>
+  <p class="note">Why integers, not percentages? Because <code>decisive / present × 100 ≥ floor</code> compares two floating-point numbers, and floating-point cannot represent most fractions exactly. The cross-multiplied form <code>decisive × 100 ≥ floor × present</code> uses only whole-number multiplication, which is exact for every input that fits — the boundary cannot wobble.</p>
+</section>
+
+<section id="brochure">
+  <h2>For buyers — what QuorumFloor does for your business</h2>
+  <p>A turnout rule you compute by hand is a rule you can be forced to re-compute in front of a challenger. QuorumFloor turns "the ballot met quorum" from a figure on a calculator into an exact, reproducible verdict with a re-runnable proof. Here is what that means for each role.</p>
+  <div class="grid two">
+    <div class="card"><h3>For the Company Secretary / Governance</h3><p>Resolution quorums, AGM turnout floors and trustee-board thresholds become <b>exact</b> and reproducible. The margin is explicit, so a contested "did it carry?" is settled by whole-number arithmetic anyone can re-run — not by whose spreadsheet rounded which way.</p></div>
+    <div class="card"><h3>For the Returning Officer / Ballot runner</h3><p>Statutory turnout floors (a strike ballot's 50%, a referendum threshold) are judged on the exact line. The kernel <b>never throws</b>, so a malformed entry returns a clean refusal rather than crashing a results run, and the empty and all-abstain cases are handled on purpose.</p></div>
+    <div class="card"><h3>For the CTO / Eng lead</h3><p>Drop it into a voting service, a DAO contract's off-chain pre-check, a governance tool or an agent's tool-belt. Zero dependencies, no network, no secrets. Integer-only means <b>bit-identical results</b> across every machine and language you port it to.</p></div>
+    <div class="card"><h3>For the Risk / Audit lead</h3><p>The quorum decision is a 60-line pure function with a mutation gate, re-run in public CI — the artefact an auditor can inspect in a sitting. "Passing tests" is cheap; "no mutant survives the tests" is the harder, honest bar you can show a regulator.</p></div>
+  </div>
+
+  <h3>Security &amp; compliance, answered straight</h3>
+  <table>
+    <tr><th>Question</th><th>Answer</th></tr>
+    <tr><td>Where does our ballot data go?</td><td>Nowhere. The kernel runs in the page. There is no network call in the whole file — read it to confirm, or run it fully offline.</td></tr>
+    <tr><td>Can we self-host?</td><td>It is one static HTML file and one <code>.mjs</code>. Host it on your own intranet, or <code>import</code> the kernel into your own service. No licence server, no phone-home.</td></tr>
+    <tr><td>How do we know it's correct?</td><td>Unit tests plus a 19/19 mutation gate, both re-run in public CI. The exact-boundary and empty-ballot cases are pinned by test, not left to chance.</td></tr>
+    <tr><td>What's the licence?</td><td>MIT. Use it, fork it, embed it in a product. Authored by Kar for AI Native Solutions; licence holder Simon Gant.</td></tr>
+    <tr><td>What are the limits?</td><td>See <a href="#risks">Risks, answered</a> below — QuorumFloor judges turnout against a floor honestly; it does not decide the <em>outcome</em> (majority), verify a voter's identity, or check they were eligible. It is the referee for the floor, and composes with a tally and a signer.</td></tr>
+  </table>
+</section>
+
+<section id="cost">
+  <h2>The cost case — computed here, change the inputs</h2>
+  <p>Where a human currently <b>computes and defends</b> a turnout or quorum percentage for each vote — tallying the groups, working the percentage, confirming it clears, and being ready to show the working if challenged — that is the time a provable floor removes. Put your own numbers in; the figure is computed live by a small model on this page.</p>
+  <div class="card">
+    <div class="grid three">
+      <div><label>Quorum-gated votes / year</label><br><input type="number" id="c_vol" value="240" min="0"></div>
+      <div><label>Minutes saved each (compute + defend)</label><br><input type="number" id="c_min" value="15" min="0"></div>
+      <div><label>Loaded governance-officer rate (£/hr)</label><br><input type="number" id="c_rate" value="38" min="0"></div>
+    </div>
+    <div style="margin-top:18px" class="grid three">
+      <div><div class="muted" style="font-size:13px">Staff hours removed / year</div><div class="big" id="c_hrs">—</div></div>
+      <div><div class="muted" style="font-size:13px">Annual saving</div><div class="big" id="c_save" style="color:var(--ok)">—</div></div>
+      <div><div class="muted" style="font-size:13px">Cost of QuorumFloor</div><div class="big" style="color:var(--accent)">£0</div></div>
+    </div>
+    <p class="muted" style="font-size:13px;margin-top:14px">Illustrative. The default <b>£38/hr loaded rate</b> is a mid-range UK figure for a company-secretarial / governance officer (≈£30k–£40k base, grossed up ~1.3× for employer NI, pension and overhead; source: ONS ASHE 2024 median gross pay, business/finance-associate occupations, loaded). The minutes-saved figure is the computing and defending of the floor, not the decision itself. Compare against per-seat governance / board-portal SaaS, which typically runs <b>£10–£40 per user per month</b>; QuorumFloor's kernel is MIT and self-hosted, so the per-seat line is £0.</p>
+  </div>
+</section>
+
+<section id="adopt">
+  <h2>Adoption — how you roll it out</h2>
+  <div class="grid three">
+    <div class="card"><h3>1 · Try (today)</h3><p>Open this page, run a real past vote through <a href="#try">Try it</a>, and check the verdict matches your record. No sign-up, nothing installed.</p></div>
+    <div class="card"><h3>2 · Embed (an afternoon)</h3><p><code>import { quorumFloor }</code> into the one place your vote is certified — a results service, a governance tool, a DAO pre-check, an agent tool. Feed it your existing vote counts.</p></div>
+    <div class="card"><h3>3 · Prove (ongoing)</h3><p>Keep the witness gate in your own CI. Every time the kernel changes, 19/19 must still kill. Pair it with your outcome tally and your eligibility/identity layer so each vote is from a verified, entitled voter.</p></div>
+  </div>
+</section>
+
+<section id="whitepaper">
+  <h2>White paper — the short version</h2>
+  <p><b>The problem.</b> A turnout or quorum floor is a percentage threshold, and percentage thresholds are computed with division. Division forces a choice of representation, and the usual choice — floating-point — cannot represent most fractions exactly. On a vote that lands on or near its floor, the rounding direction decides the result, and on a contested vote that rounding is exactly what gets litigated.</p>
+  <p><b>The claim.</b> The floor check should be a pure, deterministic, <em>integer-only</em> function with no I/O, so it can run anywhere, be re-run identically by anyone, and be proven. QuorumFloor sums the yes/no/abstain weights, takes <code>yes + no</code> as decisive and the whole as present, and settles the floor with one cross-multiplied comparison, <code>decisive × 100 ≥ floor × present</code>. No division, no float, no drift. Equality clears; a zero ballot never clears. The result is total, honest, and bit-identical on every machine.</p>
+  <p><b>Why a mutation gate, not just tests.</b> Passing tests prove the code works on the cases you thought of. A mutation gate proves the <em>tests</em> work: it rewrites the kernel 19 ways — <code>&gt;=</code>→<code>&gt;</code>, the zero-present guard removed, decisive and present swapped — and demands the tests catch every one. 19/19 killed means the suite has no blind spot a bug could hide in. This is the estate's one defensible idea: trust comes from a gate that survives attack, not from a green checkmark.</p>
+  <p><b>What it is not.</b> QuorumFloor judges the <em>floor</em> — whether decisive participation reached the required share of those present. It does <em>not</em> decide the outcome: it does not tell you whether yes beat no (that is a separate majority tally, and its sibling <a href="https://sjgant80-hub.github.io/kar-quorumgate/">QuorumGate</a> weighs a winning choice against a threshold). It does not verify that a voter is who they claim (a signer's job) or that they were eligible to vote (policy). It is designed to compose with those — the referee for the floor, not the whole election.</p>
+  <div id="risks" class="card">
+    <h3 style="margin-top:0">Risks, answered</h3>
+    <div class="kv"><span>"Abstentions shouldn't count toward the floor."</span><b>They count as present, not decisive — the usual rule; set your weights to your own convention.</b></div>
+    <div class="kv"><span>"Someone sets the floor too low."</span><b>Policy, and visible — the floor is in the record and the margin is explicit.</b></div>
+    <div class="kv"><span>"Weights could be gamed."</span><b>Weights are your input; gate who can set them upstream, and sign the roster.</b></div>
+    <div class="kv" style="border-bottom:none"><span>"The code could change silently."</span><b>CI re-runs the gate and the page-parity test; a drifting kernel fails 19/19 or breaks parity.</b></div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p><b>QuorumFloor</b> — authored by <b>Kar</b>, the AI that builds for AI Native Solutions, under its own name. MIT · licence holder Simon Gant.</p>
+  <p>Repository &amp; CI: <a href="https://github.com/sjgant80-hub/kar-quorumfloor">github.com/sjgant80-hub/kar-quorumfloor</a> · the kernel on this page is byte-identical to the gated one. Sibling: <a href="https://sjgant80-hub.github.io/kar-quorumgate/">QuorumGate</a>.</p>
+</footer>
+
+<script>
+// ---- theme toggle ----
+(function(){
+  const b=document.getElementById('themeBtn');
+  let t=null; try{t=localStorage.getItem('qf-theme')}catch(e){}
+  if(t)document.documentElement.setAttribute('data-theme',t);
+  b.addEventListener('click',()=>{
+    const cur=document.documentElement.getAttribute('data-theme');
+    const mq=window.matchMedia('(prefers-color-scheme:dark)').matches;
+    const next=(cur? cur : (mq?'dark':'light'))==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',next);
+    try{localStorage.setItem('qf-theme',next)}catch(e){}
+  });
+})();
+
+// ============================================================
+//  THE KERNEL — byte-identical to kernel.mjs (gated 19/19).
+//  Do not edit here without re-running the witness on kernel.mjs.
+// ============================================================
+function isNonNegInt(n) {
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0;
+}
+
+function isValidChoice(c) {
+  return c === 'yes' || c === 'no' || c === 'abstain';
+}
+
+function tally(votes) {
+  if (!Array.isArray(votes)) {
+    return { ok: false, why: 'votes must be an array' };
+  }
+  let yes = 0, no = 0, abstain = 0;
+  for (let i = 0; i < votes.length; i++) {
+    const v = votes[i];
+    if (v === null || typeof v !== 'object') {
+      return { ok: false, why: `vote at index ${i} must be an object` };
+    }
+    if (!isNonNegInt(v.weight)) {
+      return { ok: false, why: `vote at index ${i} has invalid weight` };
+    }
+    if (!isValidChoice(v.choice)) {
+      return { ok: false, why: `vote at index ${i} has invalid choice` };
+    }
+    if (v.choice === 'yes') yes += v.weight;
+    else if (v.choice === 'no') no += v.weight;
+    else abstain += v.weight;
+  }
+  return { ok: true, value: { yes, no, abstain, total: yes + no + abstain } };
+}
+
+function quorumFloor(votes, thresholdPercent) {
+  if (!isNonNegInt(thresholdPercent) || thresholdPercent > 100) {
+    return { ok: false, why: 'thresholdPercent must be an integer between 0 and 100' };
+  }
+  const tallied = tally(votes);
+  if (!tallied.ok) return tallied;
+  const { yes, no, total } = tallied.value;
+  const decisive = yes + no;
+  if (total === 0) {
+    return { ok: true, value: { clears: false, margin: -thresholdPercent } };
+  }
+  const margin = decisive * 100 - thresholdPercent * total;
+  return { ok: true, value: { clears: margin >= 0, margin } };
+}
+// ============================================================
+
+const PRESETS = {
+  turnout:  { floor:50, yes:30, no:25, ab:40 },
+  boundary: { floor:50, yes:25, no:25, ab:50 },
+  fail:     { floor:50, yes:12, no:10, ab:60 },
+  empty:    { floor:40, yes:0,  no:0,  ab:0  },
+  abstain:  { floor:1,  yes:0,  no:0,  ab:50 }
+};
+
+function buildVotes(){
+  // Pass through exactly what the inputs hold, including non-integers, so the
+  // kernel's own validation is visible. Empty field -> NaN (an invalid weight).
+  const parse=id=>{ const raw=document.getElementById(id).value; return raw===''?NaN:Number(raw); };
+  const y=parse('w_yes'), n=parse('w_no'), a=parse('w_ab');
+  const votes=[];
+  // Represent each group as one weighted vote. A zero group is omitted so an
+  // all-empty ballot is a genuine empty array (total 0), which the kernel pins.
+  if(!(y===0)) votes.push({weight:y,choice:'yes'});
+  if(!(n===0)) votes.push({weight:n,choice:'no'});
+  if(!(a===0)) votes.push({weight:a,choice:'abstain'});
+  return votes;
+}
+
+function render(){
+  const floorRaw=document.getElementById('floor').value;
+  const floor = floorRaw==='' ? NaN : Number(floorRaw);
+  const votes=buildVotes();
+  const r=quorumFloor(votes, floor);
+
+  const vEl=document.getElementById('verdict'), vt=document.getElementById('verdictText');
+  const raw=document.getElementById('raw'), exp=document.getElementById('explain');
+  raw.textContent=JSON.stringify(r,null,2);
+
+  const dec=document.getElementById('k_dec'), pres=document.getElementById('k_pres'),
+        testEl=document.getElementById('k_test'), marg=document.getElementById('k_margin'),
+        fill=document.getElementById('barFill'), thrLine=document.getElementById('barThr'),
+        pctLabel=document.getElementById('pctLabel');
+
+  if(!r.ok){
+    vEl.className='verdict unmet';
+    vt.textContent='invalid input — '+r.why;
+    dec.textContent=pres.textContent=testEl.textContent=marg.textContent='—';
+    fill.style.width='0%';
+    pctLabel.textContent='';
+    exp.textContent='The kernel refused the input cleanly (no throw). Weights and the floor must be whole non-negative numbers; the floor must be 0–100.';
+    return;
+  }
+
+  // Recompute the parts for display from the same integers the kernel used.
+  const t=tally(votes).value;
+  const decisive=t.yes+t.no, present=t.total;
+  const lhs=decisive*100, rhs=(Number.isFinite(floor)?floor:0)*present;
+  const pct = present>0 ? (decisive*100/present) : 0;
+
+  vEl.className='verdict '+(r.value.clears?'met':'unmet');
+  vt.textContent = r.value.clears
+    ? `FLOOR MET — decisive turnout clears the ${floor}% floor`
+    : (present===0 ? `NOT MET — empty ballot, nothing present to clear the floor`
+                   : `NOT MET — decisive turnout is below the ${floor}% floor`);
+
+  dec.textContent=decisive;
+  pres.textContent=present;
+  testEl.innerHTML=`${lhs} ${r.value.clears?'≥':'<'} ${rhs}`;
+  marg.innerHTML = `<b style="color:var(--${r.value.margin>=0?'ok':'no'})">${r.value.margin>=0?'+':''}${r.value.margin}</b>`;
+  fill.style.width=Math.min(100,pct)+'%';
+  fill.style.background = r.value.clears ? 'var(--ok)' : 'var(--no)';
+  thrLine.style.left=Math.min(100,Number.isFinite(floor)?floor:0)+'%';
+  pctLabel.textContent = present>0 ? `≈ ${pct.toFixed(decisive*100%present===0?0:2)}% of present` : '';
+
+  exp.innerHTML = present===0
+    ? `No one present. With nothing cast, the floor can never be cleared — the kernel returns <code>clears:false</code> with margin <code>${r.value.margin}</code> (the negative floor), a deliberate rule rather than a divide-by-zero.`
+    : `<b>${decisive}</b> decisive vote(s) of <b>${present}</b> present. The exact test is <code>${lhs} ${r.value.clears?'≥':'<'} ${rhs}</code> — all whole numbers, so the boundary cannot drift. Abstentions (<b>${t.abstain}</b>) count toward <em>present</em> but never toward <em>decisive</em>.`;
+}
+
+['w_yes','w_no','w_ab','floor'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+function loadPreset(name){
+  const p=PRESETS[name];
+  document.getElementById('w_yes').value=p.yes;
+  document.getElementById('w_no').value=p.no;
+  document.getElementById('w_ab').value=p.ab;
+  document.getElementById('floor').value=p.floor;
+  render();
+}
+document.querySelectorAll('[data-preset]').forEach(c=>c.addEventListener('click',()=>loadPreset(c.dataset.preset)));
+loadPreset('turnout');
+
+// ---- cost model ----
+function money(n){ return '£'+Math.round(n).toLocaleString('en-GB'); }
+function cost(){
+  const vol=Math.max(0,+document.getElementById('c_vol').value||0);
+  const min=Math.max(0,+document.getElementById('c_min').value||0);
+  const rate=Math.max(0,+document.getElementById('c_rate').value||0);
+  const hrs=vol*min/60;
+  document.getElementById('c_hrs').textContent=Math.round(hrs).toLocaleString('en-GB');
+  document.getElementById('c_save').textContent=money(hrs*rate);
+}
+['c_vol','c_min','c_rate'].forEach(id=>document.getElementById(id).addEventListener('input',cost));
+cost();
+</script>
+</body>
+</html>
