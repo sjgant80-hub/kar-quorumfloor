@@ -1,0 +1,95 @@
+{
+  "genome": "1",
+  "name": "kar-quorumfloor",
+  "kind": "repo",
+  "purpose": "Settles a vote's turnout floor exactly: decisive votes (yes plus no) as a percentage of everyone present, cross-multiplied in whole numbers so no rounding can pass a failed vote or fail a passed one.",
+  "lane": {
+    "id": "turnout-floor",
+    "accepts": "a list of votes {weight, choice: yes|no|abstain} with whole non-negative weights, and a whole-number threshold from 0 to 100 percent",
+    "refuses": "anything that is not a ballot it can settle exactly, such as a request to declare the result or act on it"
+  },
+  "interface": {
+    "in": "{\"votes\":[{\"weight\":<whole n>,\"choice\":\"yes|no|abstain\"}],\"thresholdPercent\":<0-100>} plus, to audit, a claimed result {\"clears\":<bool>,\"margin\":<whole n>}",
+    "out": "{ok:true, value:{clears, margin}}, or {ok:false, why} for a ballot it cannot settle exactly"
+  },
+  "judge": {
+    "what": "a claimed result is right when QuorumFloor's own whole-number check gives the same clears and the same exact margin",
+    "run": "node genome/judge.mjs",
+    "cases": {
+      "good": {
+        "votes": [
+          {
+            "weight": 40,
+            "choice": "yes"
+          },
+          {
+            "weight": 10,
+            "choice": "no"
+          },
+          {
+            "weight": 50,
+            "choice": "abstain"
+          }
+        ],
+        "thresholdPercent": 50,
+        "clears": true,
+        "margin": 0
+      },
+      "bad": {
+        "votes": [
+          {
+            "weight": 20,
+            "choice": "yes"
+          },
+          {
+            "weight": 10,
+            "choice": "no"
+          },
+          {
+            "weight": 70,
+            "choice": "abstain"
+          }
+        ],
+        "thresholdPercent": 50,
+        "clears": true,
+        "margin": 2000
+      }
+    }
+  },
+  "boundary": {
+    "run": "node genome/lane.mjs",
+    "inLane": {
+      "votes": [
+        {
+          "weight": 25,
+          "choice": "yes"
+        },
+        {
+          "weight": 25,
+          "choice": "no"
+        },
+        {
+          "weight": 50,
+          "choice": "abstain"
+        }
+      ],
+      "thresholdPercent": 50
+    },
+    "outOfLane": {
+      "request": "Declare the strike ballot carried and tell the members"
+    },
+    "escalate": "kar"
+  },
+  "health": {
+    "run": "node genome/health.mjs"
+  },
+  "tombstone": {
+    "apply": "node genome/tombstone.mjs apply",
+    "restore": "node genome/tombstone.mjs restore"
+  },
+  "provenance": {
+    "repo": "sjgant80-hub/kar-quorumfloor",
+    "by": "Kar, for Simon Gant",
+    "born": "2026-11-21"
+  }
+}

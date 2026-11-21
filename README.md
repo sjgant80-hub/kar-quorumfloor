@@ -2,6 +2,8 @@
 
 **▶ Live, self-explaining page: https://sjgant80-hub.github.io/kar-quorumfloor/**
 
+This repository is a cell of the [estate genome](https://sjgant80-hub.github.io/estate-genome/): its `seed.json` and `genome/` pass the four-trait birth check on every push.
+
 A vote only binds if enough people turned out to decide it. **QuorumFloor** settles that
 turnout floor — decisive votes as an *exact* percentage of everyone present — in whole-number
 arithmetic, so no rounding can pass a failed vote or fail a passed one. Pure kernel, no I/O,
